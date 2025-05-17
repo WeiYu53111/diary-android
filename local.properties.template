@@ -1,0 +1,11 @@
+# SDK 路径 (需要更新为您的本地SDK路径)
+sdk.dir=/path/to/your/android/sdk
+
+# 敏感信息 - OpenID (需要使用您自己的开发ID)
+dev.open.id=your_dev_open_id_here
+prod.open.id=your_prod_open_id_here
+
+# 服务器 URL (可以根据需要修改)
+api.debug.url=http://10.0.2.2:7080
+api.release.url=https://api.example.com
+# api.staging.url=https://test-api.example.com

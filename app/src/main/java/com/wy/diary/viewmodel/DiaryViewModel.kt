@@ -1,198 +1,151 @@
 package com.wy.diary.viewmodel
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wy.diary.api.DiaryService
-import com.wy.diary.api.RetrofitClient
-import com.wy.diary.api.isApiCallSuccess
-import com.wy.diary.api.getErrorMessage
-import com.wy.diary.api.getDataSafely
 import com.wy.diary.model.DiaryRequest
-import com.wy.diary.util.FileUtils
+import com.wy.diary.repository.DiaryHttpRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import java.text.SimpleDateFormat
-import java.util.*
-import cn.hutool.core.date.ChineseDate
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
-class DiaryViewModel : ViewModel() {
-    private val _editorContent = MutableStateFlow("")
-    val editorContent: StateFlow<String> = _editorContent
+
+/**
+ * 日记视图模型 - 处理UI状态和业务逻辑
+ */
+class DiaryViewModel(
+    private val repository: DiaryHttpRepository = DiaryHttpRepository()
+) : ViewModel() {
+    // 统一的UI状态流
+    private val _uiState = MutableStateFlow(DiaryUiState())
+    val uiState: StateFlow<DiaryUiState> = _uiState
     
-    private val _photos = MutableStateFlow<List<Uri>>(emptyList())
-    val photos: StateFlow<List<Uri>> = _photos
+    // 为保持兼容性，定义状态访问器
+    val editorContent: StateFlow<String> = uiState
+        .map { it.editorContent }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.editorContent)
+        
+    val photos: StateFlow<List<Uri>> = uiState
+        .map { it.photos }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.photos)
+        
+    val address: StateFlow<String> = uiState
+        .map { it.address }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.address)
+        
+    val isSaving: StateFlow<Boolean> = uiState
+        .map { it.isSaving }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.isSaving)
+        
+    val saveError: StateFlow<String?> = uiState
+        .map { it.error }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.error)
     
-    private val _isSaving = MutableStateFlow(false)
-    val isSaving: StateFlow<Boolean> = _isSaving
-    
-    private val _saveError = MutableStateFlow<String?>(null)
-    val saveError: StateFlow<String?> = _saveError
-    
-    private val _address = MutableStateFlow("未选择地址")
-    val address: StateFlow<String> = _address
-    
-    // API 服务
-    private val diaryService = RetrofitClient.createService(DiaryService::class.java)
-    
+    // 更新方法
     fun updateEditorContent(content: String) {
-        _editorContent.value = content
+        _uiState.update { it.copy(editorContent = content) }
     }
     
-    // 在处理 Uri 时，确保正确提取文件名
     fun addPhoto(uri: Uri) {
-        val fileName = uri.lastPathSegment ?: uri.toString()
-        // 移除可能的引号
-        val cleanFileName = fileName.replace("\"", "")
-        
-        Log.d("DiaryViewModel", "Adding photo with original URI: $uri")
-        Log.d("DiaryViewModel", "Extracted filename: $cleanFileName")
-        
-        _photos.update { currentPhotos -> currentPhotos + uri }
+        _uiState.update { it.copy(photos = it.photos + uri) }
     }
     
     fun removePhoto(uri: Uri) {
-        _photos.value = _photos.value.filter { it != uri }
+        _uiState.update { it.copy(photos = it.photos.filter { photo -> photo != uri }) }
     }
     
     fun updateAddress(newAddress: String) {
-        _address.value = newAddress
+        _uiState.update { it.copy(address = newAddress) }
     }
     
     fun clearContent() {
-        _editorContent.value = ""
-        _photos.value = emptyList()
-        _address.value = "未选择地址"
+        _uiState.update { it.copy(editorContent = "", photos = emptyList(), address = "未选择地址", error = null) }
     }
     
+    /**
+     * 保存日记 - 核心业务逻辑
+     */
     fun saveDiary(context: Context) {
         viewModelScope.launch {
-            _isSaving.value = true
-            _saveError.value = null
+            // 更新状态为保存中
+            _uiState.update { it.copy(isSaving = true, error = null) }
             
             try {
                 // 1. 获取日记ID
-                Log.d("DiaryViewModel", "正在获取日记ID...")
-                val idResponse = diaryService.getDiaryId()
-                Log.d("DiaryViewModel", "获取日记ID响应: ${idResponse.code()}, body: ${idResponse.body()}")
-
-//                if (!idResponse.isApiCallSuccess()) {
-//                    throw Exception("获取日记ID失败: ${idResponse.getErrorMessage()}")
-//                }
-
-                val diaryId = idResponse.getDataSafely()?.diaryId
-                    ?: throw Exception("获取日记ID失败: 返回数据为空")
-
+                val diaryId = repository.getDiaryId()
+                
                 // 2. 上传图片
-                Log.d("DiaryViewModel", "开始上传图片，共 ${_photos.value.size} 张")
-                if (_photos.value.isEmpty()) {
-                    Log.d("DiaryViewModel", "没有图片需要上传")
-                }
-
-                val imageUrls = mutableListOf<String>()
-                for (photoUri in _photos.value) {
-                    Log.d("DiaryViewModel", "处理图片: $photoUri")
-                    
-                    try {
-                        // 将 Uri 转换为文件
-                        val file = withContext(Dispatchers.IO) {
-                            FileUtils.uriToFile(context, photoUri)
-                        }
-                        Log.d("DiaryViewModel", "转换后的文件: ${file?.absolutePath}, 大小: ${file?.length()} bytes")
-                        
-                        if (file == null || !file.exists()) {
-                            Log.e("DiaryViewModel", "文件不存在或无效")
-                            continue
-                        }
-                        
-                        // 上传图片
-                        val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                        val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-                        
-                        Log.d("DiaryViewModel", "开始上传文件: ${file.name}")
-                        val uploadResponse = diaryService.uploadImage(body, diaryId)
-                        Log.d("DiaryViewModel", "上传响应: ${uploadResponse.code()}, body: ${uploadResponse.body()}")
-                        
-                        if (!uploadResponse.isApiCallSuccess()) {
-                            Log.e("DiaryViewModel", "上传失败: ${uploadResponse.getErrorMessage()}")
-                            throw Exception("图片上传失败: ${uploadResponse.getErrorMessage()}")
-                        }
-                        
-                        val imageUrl = uploadResponse.getDataSafely()?.url 
-                            ?: uploadResponse.getDataSafely()?.toString()
-                        
-                        Log.d("DiaryViewModel", "获取到的图片URL: $imageUrl")
-                        
-                        if (imageUrl == null) {
-                            Log.e("DiaryViewModel", "图片URL为空")
-                            throw Exception("图片URL获取失败")
-                        }
-                        
-                        imageUrls.add(imageUrl)
-                        Log.d("DiaryViewModel", "已添加图片URL，当前共: ${imageUrls.size}")
-                    } catch (e: Exception) {
-                        Log.e("DiaryViewModel", "处理图片时出错", e)
-                        throw e
-                    }
-                }
+                val imageUrls = repository.uploadImages(context, _uiState.value.photos, diaryId)
                 
-                // 3. 保存日记内容
-                Log.d("DiaryViewModel", "准备保存日记内容")
-                val openId = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-                    .getString("openid", "") ?: ""
+                // 3. 获取日期信息和用户ID
+                val dateInfo = repository.getCurrentDateInfo()
+                val openId = repository.getUserOpenId(context)
                 
-                // 获取当前日期、星期和农历
-                val calendar = Calendar.getInstance()
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                val weekDayFormat = SimpleDateFormat("EEEE", Locale.CHINESE)
-                val date = dateFormat.format(calendar.time)
-                val weekday = weekDayFormat.format(calendar.time)
-                
-                val chineseDate = ChineseDate(calendar.time)
-                val lunarDate = "${chineseDate.chineseMonthName}${chineseDate.chineseDay}"
-
-                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                sdf.timeZone = TimeZone.getTimeZone("UTC")  // 关键步骤：强制UTC时区
-                val utcTime =  sdf.format(Date())         // 输出真实的UTC时间
-
+                // 4. 构建请求并保存日记
                 val diaryRequest = DiaryRequest(
                     openId = openId,
-                    editorContent = _editorContent.value,
-                    createTime = utcTime,
-                    logTime = date,
-                    logWeek = weekday,
-                    logLunar = lunarDate,
-                    address = _address.value,
+                    editorContent = _uiState.value.editorContent,
+                    createTime = dateInfo.createTime,
+                    logTime = dateInfo.logTime,
+                    logWeek = dateInfo.logWeek,
+                    logLunar = dateInfo.logLunar,
+                    address = _uiState.value.address,
                     imageUrls = imageUrls,
                     diaryId = diaryId
                 )
                 
-                val saveResponse = diaryService.saveDiary(diaryRequest)
+                repository.saveDiary(diaryRequest)
                 
-                if (!saveResponse.isApiCallSuccess()) {
-                    throw Exception("保存日记失败: ${saveResponse.getErrorMessage()}")
-                }
-                
-                // 保存成功，清空内容
+                // 5. 保存成功，更新状态并清空内容
                 clearContent()
+                _uiState.update { it.copy(isSaving = false, isSaveSuccess = true) }
                 
             } catch (e: Exception) {
-                _saveError.value = "保存失败: ${e.message}"
-                
+                Log.e("DiaryViewModel", "保存日记失败", e)
+                _uiState.update { 
+                    it.copy(
+                        isSaving = false, 
+                        error = "保存失败: ${e.message}",
+                        isSaveSuccess = false
+                    ) 
+                }
                 // 可以添加回滚逻辑，如删除已上传的图片
-            } finally {
-                _isSaving.value = false
             }
         }
     }
+    
+    /**
+     * 清除保存成功状态 - 用于在UI显示成功消息后调用
+     */
+    fun resetSaveSuccess() {
+        _uiState.update { it.copy(isSaveSuccess = false) }
+    }
+    
+    /**
+     * 清除错误信息
+     */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
 }
+
+/**
+ * 日记UI状态 - 包含所有需要在UI层展示的状态
+ */
+data class DiaryUiState(
+    val editorContent: String = "",
+    val photos: List<Uri> = emptyList(),
+    val address: String = "未选择地址",
+    val isSaving: Boolean = false,
+    val isSaveSuccess: Boolean = false,
+    val error: String? = null,
+    val uploadProgress: Float = 0f, // 0-1之间
+    val currentUploadingPhoto: Uri? = null
+)
+

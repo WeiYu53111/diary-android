@@ -5,9 +5,13 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> <!-- 添加网络权限 -->
+    <!-- 读取图片媒体权限，适用于API 33及以上版本，替代READ_EXTERNAL_STORAGE -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- 网络访问权限，用于与后端服务通信 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 检测网络状态权限，用于在网络变化时调整应用行为 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
 
     <application
         android:name="com.wy.diary.DiaryApplication"

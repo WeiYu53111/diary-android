@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.dagger.hilt.android") // 应用 Hilt 插件
+    kotlin("kapt") // 应用 Kotlin Annotation Processing Tool 插件
+    id("kotlin-parcelize")
 }
 
 // 读取 local.properties 文件
@@ -89,65 +92,119 @@ android {
 
 dependencies {
     
+    // ==== 第三方平台SDK ====
+    // 微信开放平台SDK，用于微信登录、分享等功能
     implementation("com.tencent.mm.opensdk:wechat-sdk-android:6.8.0")
+    
+    // ==== Android 官方基础库 ====
+    // Android Kotlin 核心扩展库
     implementation(libs.androidx.core.ktx)
+    // Android 生命周期运行时库
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // Jetpack Compose活动集成库
     implementation(libs.androidx.activity.compose)
+    // Compose基础库集合
     implementation(platform(libs.androidx.compose.bom))
+    // Compose UI基础组件
     implementation(libs.androidx.ui)
+    // Compose图形渲染库
     implementation(libs.androidx.ui.graphics)
+    // Compose预览工具
     implementation(libs.androidx.ui.tooling.preview)
+    // Material Design 3组件库
     implementation(libs.androidx.material3)
+    // 传统视图系统兼容库
     implementation(libs.androidx.appcompat)
+    // Material Design组件(非Compose)
     implementation(libs.material)
+    // Android Activity库
     implementation(libs.androidx.activity)
+    // 约束布局库
     implementation(libs.androidx.constraintlayout)
+    // 下拉刷新组件
     implementation(libs.androidx.swiperefreshlayout)
+    // LiveData扩展库
     implementation(libs.androidx.lifecycle.livedata.ktx)
+    // ViewModel扩展库
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    // 导航组件-Fragment支持
     implementation(libs.androidx.navigation.fragment.ktx)
+    // 导航组件-UI支持
     implementation(libs.androidx.navigation.ui.ktx)
+    
+    // ==== 测试相关库 ====
+    // 单元测试库
     testImplementation(libs.junit)
+    // Android测试扩展库
     androidTestImplementation(libs.androidx.junit)
+    // UI自动化测试库
     androidTestImplementation(libs.androidx.espresso.core)
+    // Compose测试基础库
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    // Compose UI测试
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    // Compose工具库(仅调试模式)
     debugImplementation(libs.androidx.ui.tooling)
+    // Compose测试清单
     debugImplementation(libs.androidx.ui.test.manifest)
     
-    // 添加 Coil 图片加载库
+    // ==== 图片加载库 ====
+    // Coil - Kotlin协程图片加载库(Compose专用)
     implementation("io.coil-kt:coil-compose:2.5.0")
+    // Glide - 高效图片加载和缓存库
+    implementation("com.github.bumptech.glide:glide:4.15.1")
+    // Glide OkHttp集成
+    implementation("com.github.bumptech.glide:okhttp3-integration:4.15.1")
+    // Glide注解处理器
+    annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+    // 圆形图片视图控件
+    implementation("de.hdodenhof:circleimageview:3.1.0")
     
-    // 使用阿里云托管的农历库
+    // ==== 日期时间处理 ====
+    // Hutool核心库 - 中国农历计算等工具
     implementation("cn.hutool:hutool-core:5.8.15")
     
-    // 更新到最新版本（或至少 1.7.0）
+    // ==== Jetpack Compose扩展 ====
+    // 最新版Activity-Compose集成
     implementation("androidx.activity:activity-compose:1.8.2")
+    // 最新版Activity-KTX扩展
     implementation("androidx.activity:activity-ktx:1.8.2")
-    
-    // Retrofit 网络请求库
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    
-    // OkHttp
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")
-    
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")  // 使用最新版本
-    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")  // 使用最新版本
-
-    // 新增依赖
-    implementation("com.github.bumptech.glide:glide:4.15.1")
-    implementation("com.github.bumptech.glide:okhttp3-integration:4.15.1") // 取消注释并修正格式
-    annotationProcessor("com.github.bumptech.glide:compiler:4.15.1") // 添加注解处理器
-//    implementation("io.coil-kt:coil:2.4.0")
-    implementation("de.hdodenhof:circleimageview:3.1.0")
-
-        // Accompanist 库
-    implementation("com.google.accompanist:accompanist-swiperefresh:0.24.13-rc")
-    implementation("androidx.compose.material:material-icons-extended:1.5.0")
-
+    // ViewModel-Compose集成
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    // Compose Material图标扩展包
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
+    
+    // ==== 网络请求库 ====
+    // Retrofit - 类型安全的HTTP客户端
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    // Retrofit Gson转换器
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    // OkHttp - HTTP客户端基础库
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    // OkHttp日志拦截器 - 用于调试网络请求
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    
+    // ==== 协程相关 ====
+    // Kotlin协程Android支持库
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    
+    // ==== Google Accompanist库 ====
+    // 下拉刷新组件
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.24.13-rc")
+    
+    // ==== 数据存储 ====
+    // Jetpack DataStore - 键值对存储(替代SharedPreferences)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Hilt 核心依赖
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-android-compiler:2.51.1") // kapt 用于注解处理器
+
+    // 确保 work-runtime-ktx 是 2.7.0 或更高版本
+    implementation("androidx.work:work-runtime-ktx:2.9.0") // 或者更新到最新稳定版
+    // 如果您使用 ViewModel，需要添加 Hilt 的 ViewModel 依赖
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0") // 如果是Compose
+    implementation("androidx.hilt:hilt-work:1.2.0") // 如果是WorkManager
+    kapt("androidx.hilt:hilt-compiler:1.2.0") // 对应 Hilt 的 ViewModel/WorkManager 编译器
+
 }

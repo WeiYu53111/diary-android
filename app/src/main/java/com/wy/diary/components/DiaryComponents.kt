@@ -1,6 +1,5 @@
 package com.wy.diary.components
 
-import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,9 +39,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.wy.diary.R
-import com.wy.diary.api.RetrofitClient
+import com.wy.diary.data.model.DiaryItem
 import com.wy.diary.ui.theme.DiaryAndroidTheme
-import com.wy.diary.viewmodel.DiaryItem
+
 
 /**
  * 日记卡片组件

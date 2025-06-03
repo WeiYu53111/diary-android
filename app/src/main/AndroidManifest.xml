@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission
+    <!--<uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+        android:maxSdkVersion="32" />-->
     <!-- 读取图片媒体权限，适用于API 33及以上版本，替代READ_EXTERNAL_STORAGE -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- 网络访问权限，用于与后端服务通信 -->
@@ -12,6 +12,9 @@
     <!-- 检测网络状态权限，用于在网络变化时调整应用行为 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- 保存备份文件需要外部存储权限 -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:name="com.wy.diary.DiaryApplication"
@@ -31,7 +34,7 @@
             android:label="@string/title_activity_data_backup_screen"
             android:theme="@style/Theme.DiaryAndroid" />
         <activity
-            android:name=".activity.DiaryHistory"
+            android:name="com.wy.diary.activity.DiaryHistoryActivity"
             android:exported="false"
             android:label="@string/title_activity_diary_history"
             android:theme="@style/Theme.DiaryAndroid" />
@@ -46,7 +49,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.wy.diary.activity.MainActivity"
+            android:name="com.wy.diary.activity.WriteActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.DiaryAndroid">

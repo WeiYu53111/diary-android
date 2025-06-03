@@ -1,12 +1,6 @@
-package com.wy.diary.activity
+package com.wy.diary.ui.screen
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,127 +17,80 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.hutool.core.date.ChineseDate
 import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
+import com.wy.diary.components.CustomTabBar
+import com.wy.diary.data.model.DiaryUiState
+import com.wy.diary.data.model.SavingStep
 import com.wy.diary.ui.theme.DiaryAndroidTheme
-import com.wy.diary.viewmodel.DiaryViewModel
+
 import java.text.SimpleDateFormat
 import java.util.*
-import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.net.Uri
-import androidx.activity.result.PickVisualMediaRequest
-import cn.hutool.core.date.ChineseDate
-import android.widget.Toast
-import com.wy.diary.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-// 导入新的组件
-import com.wy.diary.components.CustomTabBar
 
-class MainActivity : ComponentActivity() {
-    private lateinit var sharedPreferences: SharedPreferences
+@Composable
+fun DiaryScreen(
+    uiState: DiaryUiState,
+    photos: List<Uri>,
+    editorContent: String,
+    address: String,
+    onAddPhotoClick: () -> Unit,
+    onRemovePhoto: (Uri) -> Unit,
+    onEditorContentChange: (String) -> Unit,
+    onAddressChange: (String) -> Unit,
+    onSaveClick: () -> Unit,
+    onNavigateToHistory: () -> Unit
+) {
+    var pageIndex by remember { mutableStateOf(0) }
 
-    // 创建一个共享的 ViewModel
-    private val diaryViewModel = DiaryViewModel()
-
-    // 定义照片选择启动器
-    private lateinit var photoPickerLauncher: ActivityResultLauncher<PickVisualMediaRequest>
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val isLoggedIn = sharedPreferences.getBoolean("is_logged_in", false)
-
-        // 如果用户未登录，跳转到登录页面
-        if (!isLoggedIn) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-
-        // 修改照片选择器的回调处理
-        photoPickerLauncher = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let {
-                diaryViewModel.addPhoto(it)
-            }
-        }
-
-        enableEdgeToEdge()
-        setContent {
-            DiaryAndroidTheme {
-                DiaryApp(
-                    onAddPhotoClick = { openPhotoPicker() },
-                    diaryViewModel = diaryViewModel,
-                    onNavigateToHistory = { navigateToHistoryPage() } // 添加历史页面导航回调
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 主界面内容
+        Scaffold(bottomBar = {
+            CustomTabBar(
+                activeIndex = pageIndex, 
+                onTabSelected = { newIndex ->
+                    pageIndex = newIndex
+                },
+                onHistoryClick = onNavigateToHistory
+            )
+        }) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                Header()
+                MainContent(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    photos = photos,
+                    editorContent = editorContent,
+                    address = address,
+                    onAddPhotoClick = onAddPhotoClick,
+                    onRemovePhoto = onRemovePhoto,
+                    onEditorContentChange = onEditorContentChange,
+                    onAddressChange = onAddressChange,
+                    isSaving = uiState.isSaving,
+                    saveError = uiState.error,
+                    onSaveClick = onSaveClick
                 )
             }
         }
-    }
-
-    private fun openPhotoPicker() {
-        photoPickerLauncher.launch(
-            PickVisualMediaRequest(PickVisualMedia.ImageOnly)
-        )
-    }
-
-    // 添加导航到历史页面的方法
-    private fun navigateToHistoryPage() {
-        val intent = Intent(this, DiaryHistory::class.java)
-        startActivity(intent)
-        // 应用自定义过渡动画
-        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-    }
-
-
-}
-
-@Composable
-fun DiaryApp(
-    onAddPhotoClick: () -> Unit = {},
-    diaryViewModel: DiaryViewModel = remember { DiaryViewModel() },
-    onNavigateToHistory: () -> Unit = {} // 添加导航到历史页面的回调
-) {
-    var pageIndex by remember { mutableStateOf(0) }
-    
-    // 使用 ViewModel 的 photos 状态
-    val photos by diaryViewModel.photos.collectAsState()
-
-    Scaffold(bottomBar = {
-        CustomTabBar(
-            activeIndex = pageIndex, 
-            onTabSelected = { newIndex ->
-                pageIndex = newIndex
-            },
-            onHistoryClick = onNavigateToHistory // 传递历史页面跳转回调
-        )
-    }) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            Header()
-            MainContent(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                photos = photos,
-                onAddPhotoClick = onAddPhotoClick,
-                onRemovePhoto = { diaryViewModel.removePhoto(it) },
-                diaryViewModel = diaryViewModel
+        
+        // 保存进度覆盖层
+        if (uiState.isSaving) {
+            SavingOverlay(
+                step = uiState.savingStep,
+                progress = uiState.saveProgress
             )
         }
     }
@@ -198,23 +145,20 @@ fun Header() {
 @Composable
 fun MainContent(
     modifier: Modifier = Modifier,
-    photos: List<Uri> = emptyList(),
-    onAddPhotoClick: () -> Unit = {},
-    onRemovePhoto: (Uri) -> Unit = {},
-    diaryViewModel: DiaryViewModel
+    photos: List<Uri>,
+    editorContent: String,
+    address: String,
+    onAddPhotoClick: () -> Unit,
+    onRemovePhoto: (Uri) -> Unit,
+    onEditorContentChange: (String) -> Unit,
+    onAddressChange: (String) -> Unit,
+    isSaving: Boolean,
+    saveError: String?,
+    onSaveClick: () -> Unit
 ) {
-    val text by diaryViewModel.editorContent.collectAsState()
     var isBold by remember { mutableStateOf(false) }
     var isItalic by remember { mutableStateOf(false) }
     var isUnderlined by remember { mutableStateOf(false) }
-    val address by diaryViewModel.address.collectAsState()
-
-    // 保存状态
-    var isSaving by remember { mutableStateOf(false) }
-    var saveError by remember { mutableStateOf<String?>(null) }
-
-    // 获取上下文
-    val context = LocalContext.current
 
     Column(
         modifier = modifier.padding(16.dp)
@@ -228,8 +172,8 @@ fun MainContent(
             shape = RoundedCornerShape(8.dp)
         ) {
             TextField(
-                value = text,
-                onValueChange = { diaryViewModel.updateEditorContent(it) },
+                value = editorContent,
+                onValueChange = onEditorContentChange,
                 modifier = Modifier
                     .fillMaxSize(),
                 textStyle = TextStyle(
@@ -242,10 +186,8 @@ fun MainContent(
                     Text("记录今天的心情...")
                 },
                 colors = TextFieldDefaults.colors(
-                    // 使文本框与Surface颜色匹配
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    // 移除边框
                     unfocusedIndicatorColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent
                 )
@@ -355,41 +297,15 @@ fun MainContent(
 
         // 提交按钮
         Button(
-            onClick = { 
-                // 保存日记数据
-                isSaving = true
-                saveError = null
-                
-                // 使用ViewModel保存日记
-                diaryViewModel.updateEditorContent(text)
-                diaryViewModel.updateAddress(address)
-                
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        diaryViewModel.saveDiary(context)
-                        
-                        withContext(Dispatchers.Main) {
-                            isSaving = false
-                            Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            isSaving = false
-                            saveError = "保存失败: ${e.message}"
-                            Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-            },
+            onClick = onSaveClick,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.Black
             ),
-            enabled = !isSaving // 保存过程中禁用按钮
+            enabled = !isSaving
         ) {
             if (isSaving) {
-                // 显示加载指示器
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     color = Color.White,
@@ -410,16 +326,92 @@ fun MainContent(
             )
         }
     }
-
-
 }
 
-
+@Composable
+fun SavingOverlay(
+    step: SavingStep,
+    progress: Float
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(enabled = false) { /* 拦截点击事件 */ },
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .padding(16.dp)
+                .width(300.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = "正在保存日记",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = when(step) {
+                        SavingStep.PREPARING -> "正在准备数据..."
+                        SavingStep.UPLOADING_IMAGES -> "正在上传图片..."
+                        SavingStep.SAVING_CONTENT -> "正在保存日记内容..."
+                        SavingStep.FINALIZING -> "正在完成保存..."
+                        SavingStep.NONE -> "处理中..."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 线性进度条
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                // 显示百分比
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
-fun DiaryAppPreview() {
+fun DiaryScreenPreview() {
     DiaryAndroidTheme {
-        DiaryApp()
+        DiaryScreen(
+            uiState = DiaryUiState(),
+            photos = emptyList(),
+            editorContent = "今天的心情很好...",
+            address = "北京市海淀区",
+            onAddPhotoClick = {},
+            onRemovePhoto = {},
+            onEditorContentChange = {},
+            onAddressChange = {},
+            onSaveClick = {},
+            onNavigateToHistory = {}
+        )
     }
 }

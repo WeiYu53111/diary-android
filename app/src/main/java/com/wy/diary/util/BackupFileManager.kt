@@ -6,7 +6,7 @@ import android.net.Uri
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.wy.diary.viewmodel.BackupFileInfo
+import com.wy.diary.data.model.BackupFileInfo
 
 /**
  * 备份文件信息管理器，负责备份文件信息的存储和读取

@@ -14,11 +14,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import com.wy.diary.R
 import com.wy.diary.ui.theme.DiaryAndroidTheme
 import com.wy.diary.ui.screen.LoginScreen
 import com.wy.diary.viewmodel.LoginViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class LoginActivity : ComponentActivity() {
     
     private val viewModel: LoginViewModel by viewModels()
@@ -26,11 +30,11 @@ class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 如果用户已登录，直接进入主界面
-        if (viewModel.checkLoginStatus(this)) {
-            navigateToMainActivity()
-            return
-        }
+        // 使用 lifecycleScope 异步检查登录状态
+//        lifecycleScope.launch {
+//            viewModel.checkLoginStatus() // 调用无参数的检查方法，它会更新 uiState
+//            // 不在这里直接导航，而是让 LaunchedEffect 监听状态变化
+//        }
         
         enableEdgeToEdge()
         setContent {
@@ -43,7 +47,7 @@ class LoginActivity : ComponentActivity() {
                     
                     LoginScreen(
                         uiState = uiState,
-                        onLoginClick = { viewModel.performWeChatLogin(this) },
+                        onLoginClick = { viewModel.performWeChatLogin() },
                         onTermsClick = { viewModel.openTermsOfService() },
                         onPrivacyClick = { viewModel.openPrivacyPolicy() }
                     )
@@ -64,7 +68,7 @@ class LoginActivity : ComponentActivity() {
      */
     private fun navigateToMainActivity() {
         // 创建 Intent
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, WriteActivity::class.java)
 
         // 使用 ActivityOptions 创建转场动画
         val options = ActivityOptions.makeCustomAnimation(

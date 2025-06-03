@@ -1,12 +1,12 @@
-package com.wy.diary.api
+package com.wy.diary.data.remote
 
-import com.wy.diary.model.ApiResponse
-import com.wy.diary.model.DiaryIdResponse
-import com.wy.diary.model.DiaryListPagedData
-import com.wy.diary.model.DiaryRequest
-import com.wy.diary.model.ImageUploadResponse
+import com.wy.diary.data.model.ApiResponse
+import com.wy.diary.data.model.DeleteDiaryRequest
+import com.wy.diary.data.model.DiaryIdResponse
+import com.wy.diary.data.model.DiaryListPagedData
+import com.wy.diary.data.model.DiaryRequest
+import com.wy.diary.data.model.ImageUploadResponse
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -30,5 +30,10 @@ interface DiaryService {
         @Query("pageIndex") pageIndex: Int,
         @Query("pageSize") pageSize: Int
     ): Response<ApiResponse<DiaryListPagedData>>
+
+    @POST("api/diary/delete")
+    suspend fun deleteDiary(@Body request: DeleteDiaryRequest): Response<ApiResponse<Boolean>>
+
+
 
 }

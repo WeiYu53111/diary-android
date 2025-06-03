@@ -1,6 +1,6 @@
-package com.wy.diary.api
+package com.wy.diary.data.remote
 
-import com.wy.diary.model.ApiResponse
+import com.wy.diary.data.model.ApiResponse
 import retrofit2.Response
 
 /**

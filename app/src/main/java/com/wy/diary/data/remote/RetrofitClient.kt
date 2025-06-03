@@ -7,6 +7,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import com.wy.diary.BuildConfig
+import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     val BASE_URL = BuildConfig.API_BASE_URL
@@ -30,6 +31,9 @@ object RetrofitClient {
     // AuthInterceptor 将通过 Hilt 注入
     fun getOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS) // 连接超时
+            .readTimeout(5, TimeUnit.MINUTES)     // 读取超时
+            .writeTimeout(5, TimeUnit.MINUTES)    // 写入超时
             .addInterceptor(confirmationInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()

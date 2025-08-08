@@ -11,7 +11,7 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface DiaryService {
-    @GET("/api/diary/getDiaryId")
+    @GET("/api/db/diary/getDiaryId")
     suspend fun getDiaryId(): Response<ApiResponse<DiaryIdResponse>>
     
     @Multipart
@@ -21,17 +21,17 @@ interface DiaryService {
         @Query("diaryId") diaryId: String
     ): Response<ApiResponse<ImageUploadResponse>>
     
-    @POST("/api/diary/save")
+    @POST("/api/db/diary/save")
     suspend fun saveDiary(@Body request: DiaryRequest): Response<ApiResponse<Any>>
 
 
-    @GET("/api/diary/list")
+    @GET("/api/db/diary/list")
     suspend fun getDiaryList(
         @Query("pageIndex") pageIndex: Int,
         @Query("pageSize") pageSize: Int
     ): Response<ApiResponse<DiaryListPagedData>>
 
-    @POST("api/diary/delete")
+    @POST("/api/db/diary/delete")
     suspend fun deleteDiary(@Body request: DeleteDiaryRequest): Response<ApiResponse<Boolean>>
 
 

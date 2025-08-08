@@ -195,6 +195,11 @@ dependencies {
     // ==== 数据存储 ====
     // Jetpack DataStore - 键值对存储(替代SharedPreferences)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    
+    // Room 本地数据库
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
 
     // Hilt 核心依赖
     implementation("com.google.dagger:hilt-android:2.51.1")

@@ -3,7 +3,7 @@ package com.wy.diary.data.di
 import com.wy.diary.data.repository.AppRepository
 import com.wy.diary.data.repository.AppRepositoryLocalImpl
 import com.wy.diary.data.repository.DiaryRepository
-import com.wy.diary.data.repository.DiaryRepositoryHttpImpl
+import com.wy.diary.data.repository.DiaryRepositoryWithCache
 import com.wy.diary.data.repository.UserInfoRepository
 import com.wy.diary.data.repository.UserInfoRepositoryFakeImpl
 import dagger.Binds
@@ -32,7 +32,7 @@ abstract class RepositoryModule { // 如果 Module 只包含抽象的 @Binds 方
     @Singleton
     @Binds
     abstract fun bindDiaryRepository(
-        diaryRepositoryHttpImpl: DiaryRepositoryHttpImpl // Hilt 会自动注入 UserRepositoryImpl 的实例
+        diaryRepositoryWithCache: DiaryRepositoryWithCache // 使用带缓存的Repository实现
     ): DiaryRepository
 
 

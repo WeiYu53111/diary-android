@@ -9,13 +9,20 @@ import android.content.Context
  * 日记应用数据库
  */
 @Database(
-    entities = [DiaryEntity::class, CacheMetadataEntity::class],
-    version = 1,
+    entities = [
+        DiaryEntity::class, 
+        CacheMetadataEntity::class,
+        ImageCacheEntity::class,
+        ImagePreloadTaskEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class DiaryDatabase : RoomDatabase() {
     abstract fun diaryDao(): DiaryDao
     abstract fun cacheMetadataDao(): CacheMetadataDao
+    abstract fun imageCacheDao(): ImageCacheDao
+    abstract fun imagePreloadTaskDao(): ImagePreloadTaskDao
 
     companion object {
         private const val DATABASE_NAME = "diary_database"

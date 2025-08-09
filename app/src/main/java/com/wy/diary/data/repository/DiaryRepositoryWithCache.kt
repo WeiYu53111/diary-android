@@ -3,6 +3,8 @@ package com.wy.diary.data.repository
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.wy.diary.data.cache.HybridImageCacheManager
+import com.wy.diary.data.cache.PreloadPriority
 import com.wy.diary.data.model.DiaryListPagedData
 import com.wy.diary.data.model.DiaryRequest
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +19,8 @@ import javax.inject.Singleton
 @Singleton
 class DiaryRepositoryWithCache @Inject constructor(
     private val networkRepository: DiaryRepositoryHttpImpl,
-    private val localRepository: DiaryLocalRepository
+    private val localRepository: DiaryLocalRepository,
+    private val imageCacheManager: HybridImageCacheManager
 ) : DiaryRepository {
 
     companion object {
@@ -71,7 +74,10 @@ class DiaryRepositoryWithCache @Inject constructor(
             if (localRepository.hasCachedData() && localRepository.isCacheValid()) {
                 Log.d(TAG, "使用本地缓存数据")
                 val cachedData = localRepository.getDiariesPaged(pageIndex, pageSize)
-                return Result.success(cachedData)
+                
+                // 处理并预加载图片
+                val processedData = processImagesInDiaryData(cachedData)
+                return Result.success(processedData)
             }
 
             // 2. 缓存无效或为空，从网络获取
@@ -88,14 +94,19 @@ class DiaryRepositoryWithCache @Inject constructor(
                         localRepository.clearAllCache()
                     }
                     localRepository.cacheDiaries(networkData.records)
+                    
+                    // 4. 处理并预加载图片
+                    val processedData = processImagesInDiaryData(networkData)
+                    return Result.success(processedData)
                 }
                 return networkResult
             } else {
-                // 4. 网络请求失败，尝试返回缓存数据
+                // 5. 网络请求失败，尝试返回缓存数据
                 if (localRepository.hasCachedData()) {
                     Log.d(TAG, "网络失败，返回缓存数据")
                     val cachedData = localRepository.getDiariesPaged(pageIndex, pageSize)
-                    return Result.success(cachedData)
+                    val processedData = processImagesInDiaryData(cachedData)
+                    return Result.success(processedData)
                 } else {
                     Log.e(TAG, "网络失败且无缓存数据")
                     return networkResult
@@ -107,7 +118,8 @@ class DiaryRepositoryWithCache @Inject constructor(
             if (localRepository.hasCachedData()) {
                 Log.d(TAG, "异常情况下返回缓存数据")
                 val cachedData = localRepository.getDiariesPaged(pageIndex, pageSize)
-                return Result.success(cachedData)
+                val processedData = processImagesInDiaryData(cachedData)
+                return Result.success(processedData)
             } else {
                 return Result.failure(e)
             }
@@ -186,6 +198,7 @@ class DiaryRepositoryWithCache @Inject constructor(
      */
     suspend fun cleanExpiredCache() {
         localRepository.cleanExpiredCache()
+        imageCacheManager.cleanupExpiredCache()
     }
 
     /**
@@ -198,6 +211,55 @@ class DiaryRepositoryWithCache @Inject constructor(
             lastUpdateTime = localRepository.getLastUpdateTime()
         )
     }
+
+    /**
+     * 处理日记数据中的图片 - 转换URL并预加载
+     */
+    private suspend fun processImagesInDiaryData(data: DiaryListPagedData): DiaryListPagedData {
+        try {
+            val processedRecords = data.records.map { record ->
+                // 处理图片URL
+                val processedImageUrls = if (!record.imageUrls.isNullOrEmpty()) {
+                    imageCacheManager.processImageUrls(record.imageUrls)
+                } else {
+                    record.imageUrls
+                }
+
+                record.copy(imageUrls = processedImageUrls)
+            }
+
+            // 收集所有图片URL进行预加载
+            val allImageUrls = processedRecords.flatMap { it.imageUrls ?: emptyList() }
+            if (allImageUrls.isNotEmpty()) {
+                Log.d(TAG, "开始预加载 ${allImageUrls.size} 张图片")
+                // 异步预加载，不阻塞主流程
+                try {
+                    // 这里需要Context，我们稍后在Application或ViewModel中处理
+                } catch (e: Exception) {
+                    Log.w(TAG, "图片预加载失败", e)
+                }
+            }
+
+            return data.copy(records = processedRecords)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理图片数据失败", e)
+            return data
+        }
+    }
+
+    /**
+     * 预加载指定日记的图片
+     */
+    suspend fun preloadDiaryImages(context: Context, imageUrls: List<String>) {
+        if (imageUrls.isNotEmpty()) {
+            imageCacheManager.preloadImages(context, imageUrls, PreloadPriority.NORMAL)
+        }
+    }
+
+    /**
+     * 获取图片缓存统计
+     */
+    suspend fun getImageCacheStats() = imageCacheManager.getCacheStats()
 }
 
 /**

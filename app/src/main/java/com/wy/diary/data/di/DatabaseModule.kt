@@ -5,6 +5,8 @@ import androidx.room.Room
 import com.wy.diary.data.local.CacheMetadataDao
 import com.wy.diary.data.local.DiaryDao
 import com.wy.diary.data.local.DiaryDatabase
+import com.wy.diary.data.local.ImageCacheDao
+import com.wy.diary.data.local.ImagePreloadTaskDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,5 +41,15 @@ object DatabaseModule {
     @Provides
     fun provideCacheMetadataDao(database: DiaryDatabase): CacheMetadataDao {
         return database.cacheMetadataDao()
+    }
+
+    @Provides
+    fun provideImageCacheDao(database: DiaryDatabase): ImageCacheDao {
+        return database.imageCacheDao()
+    }
+
+    @Provides
+    fun provideImagePreloadTaskDao(database: DiaryDatabase): ImagePreloadTaskDao {
+        return database.imagePreloadTaskDao()
     }
 }

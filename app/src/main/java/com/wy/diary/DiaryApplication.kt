@@ -2,8 +2,10 @@ package com.wy.diary
 
 import android.app.Application
 import androidx.lifecycle.lifecycleScope
+import coil.Coil
 import com.wy.diary.data.cache.CacheManager
 import com.wy.diary.data.cache.HybridImageCacheManager
+import com.wy.diary.util.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,6 +21,9 @@ class DiaryApplication : Application() {
     
     override fun onCreate() {
         super.onCreate()
+        
+        // 初始化Coil图片加载器
+        Coil.setImageLoader(ImageLoaderFactory.getInstance(this))
         
         // 初始化数据缓存管理器
         cacheManager.initialize()

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -59,9 +60,6 @@ class DiaryHistoryViewModelWithCache @Inject constructor(
      * 当本地缓存数据发生变化时，自动更新UI（仅在初始加载时）
      */
     private fun setupCacheListener() {
-        // 暂时禁用自动缓存监听，避免干扰分页逻辑
-        // TODO: 后续可以优化为更智能的缓存监听策略
-        /*
         cacheRepository?.getCachedDiariesFlow()
             ?.combine(_uiState) { cachedRecords, currentState ->
                 // 只在初始状态（没有数据且不在加载中）时使用缓存数据初始化UI
@@ -80,15 +78,17 @@ class DiaryHistoryViewModelWithCache @Inject constructor(
                     currentState
                 }
             }
+            ?.distinctUntilChanged() // 添加去重，避免相同状态重复触发
             ?.onEach { newState ->
-                _uiState.value = newState
+                if (newState != _uiState.value) { // 再次确认状态确实改变了
+                    _uiState.value = newState
+                }
             }
             ?.launchIn(viewModelScope)
-        */
     }
 
     /**
-     * 加载日记列表
+     * 加载日记列表dw
      * @param isRefresh 是否为刷新操作
      */
     fun loadDiaryList(isRefresh: Boolean = false) {

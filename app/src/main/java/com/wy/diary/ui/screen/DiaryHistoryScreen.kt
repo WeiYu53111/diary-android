@@ -145,7 +145,7 @@ private fun DiaryListContent(
         modifier = Modifier
             .fillMaxWidth()
     ) {
-        items(diaryItems) { diary ->
+        items(diaryItems, key = { it.diaryId }) { diary ->
             DiaryCard(
                 diary = diary,
                 onDiaryClick = { onDiaryClick(diary) },

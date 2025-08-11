@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -26,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,9 +131,11 @@ fun DiaryCard(
             
             // 图片预览
             if (diary.images.isNotEmpty()) {
+                // 使用remember缓存稳定的回调，避免重复创建
+                val stableOnImageClick = remember(diary.diaryId) { onImageClick }
                 ImagePreviewGrid(
                     images = diary.images,
-                    onImageClick = onImageClick // 直接传递回调
+                    onImageClick = stableOnImageClick
                 )
             }
             
@@ -193,24 +197,30 @@ fun ImagePreviewGrid(
     onImageClick: (List<String>, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
+    // 使用remember避免重复创建ImageRequest
+    val stableImages = remember(images) { images }
+    val context = LocalContext.current
+    
     LazyRow(
         modifier = modifier.padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(images) { imageUrl ->
-            //val finalImageUrl = processImageUrl(imageUrl)
-            val index = images.indexOf(imageUrl)
-            
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+        itemsIndexed(stableImages, key = { _, url -> url }) { index, imageUrl ->            
+            // 使用remember缓存ImageRequest，避免重复创建
+            val imageRequest = remember(imageUrl) {
+                ImageRequest.Builder(context)
                     .data(imageUrl)
                     .crossfade(true)
-                    .build(),
+                    .build()
+            }
+            
+            AsyncImage(
+                model = imageRequest,
                 contentDescription = "日记图片",
                 modifier = Modifier
                     .size(100.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onImageClick(images, index) },
+                    .clickable { onImageClick(stableImages, index) },
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(id = R.drawable.image_error),
                 error = painterResource(id = R.drawable.image_error)

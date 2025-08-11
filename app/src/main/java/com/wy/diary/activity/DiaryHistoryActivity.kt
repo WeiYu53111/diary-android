@@ -15,14 +15,14 @@ import com.wy.diary.data.model.DiaryItem
 import com.wy.diary.data.model.DiaryRecord
 import com.wy.diary.ui.screen.DiaryHistoryScreen
 import com.wy.diary.ui.theme.DiaryAndroidTheme
-import com.wy.diary.viewmodel.DiaryHistoryViewModel
+import com.wy.diary.viewmodel.DiaryHistoryViewModelWithCache
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class DiaryHistoryActivity : ComponentActivity() {
-    // 使用 ViewModel
-    private val viewModel: DiaryHistoryViewModel by viewModels()
+    // 使用带缓存的 ViewModel
+    private val viewModel: DiaryHistoryViewModelWithCache by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,8 +33,8 @@ class DiaryHistoryActivity : ComponentActivity() {
                 
                 DiaryHistoryScreen(
                     uiState = uiState,
-                    onRefresh = { viewModel.loadDiaryList(true) },
-                    onLoadMore = { viewModel.loadDiaryList(false) },
+                    onRefresh = { viewModel.refreshData() },
+                    onLoadMore = { viewModel.loadMoreData() },
                     onDiaryClick = { diary -> navigateToDiaryDetail(diary) },
                     onDeleteClick = { diary -> viewModel.deleteDiary(diary) },
                     onImageClick = { imageUrls, clickedIndex -> navigateToImagePreview(imageUrls, clickedIndex) },

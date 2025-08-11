@@ -50,8 +50,8 @@ object ImageLoaderFactory {
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)
-            // 启用日志（仅在DEBUG模式）
-            .logger(if (android.util.Log.isLoggable("Coil", android.util.Log.DEBUG)) {
+            // 启用日志（在DEBUG构建中总是启用）
+            .logger(if (com.wy.diary.BuildConfig.DEBUG) {
                 coil.util.DebugLogger()
             } else null)
             // 启用网络观察者

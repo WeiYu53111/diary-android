@@ -64,59 +64,53 @@ class DiaryRepositoryWithCache @Inject constructor(
     }
 
     /**
-     * 获取日记列表 - Cache-First策略
+     * 获取日记列表 - 简化的缓存策略
+     * 主要从网络获取数据，缓存作为备用方案
      */
     override suspend fun getDiaryList(pageIndex: Int, pageSize: Int): Result<DiaryListPagedData> {
         Log.d(TAG, "获取日记列表: 页码=$pageIndex, 每页数量=$pageSize")
 
         return try {
-            // 1. 检查是否有有效缓存
-            if (localRepository.hasCachedData() && localRepository.isCacheValid()) {
-                Log.d(TAG, "使用本地缓存数据")
-                val cachedData = localRepository.getDiariesPaged(pageIndex, pageSize)
-                
-                // 处理并预加载图片
-                val processedData = processImagesInDiaryData(cachedData)
-                return Result.success(processedData)
-            }
-
-            // 2. 缓存无效或为空，从网络获取
-            Log.d(TAG, "缓存无效，从网络获取数据")
+            // 1. 优先从网络获取数据
+            Log.d(TAG, "从网络获取数据")
             val networkResult = networkRepository.getDiaryList(pageIndex, pageSize)
             
             if (networkResult.isSuccess) {
                 val networkData = networkResult.getOrNull()
                 if (networkData != null && networkData.records.isNotEmpty()) {
-                    // 3. 缓存网络数据
-                    Log.d(TAG, "缓存网络数据")
+                    // 2. 缓存网络数据（仅第一页时清空缓存）
+                    Log.d(TAG, "缓存网络数据: ${networkData.records.size} 条")
                     if (pageIndex == 1) {
-                        // 第一页时清空旧缓存
                         localRepository.clearAllCache()
                     }
                     localRepository.cacheDiaries(networkData.records)
                     
-                    // 4. 处理并预加载图片
+                    // 3. 处理并预加载图片
                     val processedData = processImagesInDiaryData(networkData)
                     return Result.success(processedData)
                 }
                 return networkResult
             } else {
-                // 5. 网络请求失败，尝试返回缓存数据
-                if (localRepository.hasCachedData()) {
-                    Log.d(TAG, "网络失败，返回缓存数据")
+                // 4. 网络请求失败，尝试返回缓存数据
+                Log.d(TAG, "网络失败，尝试使用缓存数据")
+                if (localRepository.hasCachedData() && 
+                    localRepository.isCacheValid() &&
+                    localRepository.hasDataForPage(pageIndex, pageSize)) {
+                    
+                    Log.d(TAG, "使用缓存数据作为备用")
                     val cachedData = localRepository.getDiariesPaged(pageIndex, pageSize)
                     val processedData = processImagesInDiaryData(cachedData)
                     return Result.success(processedData)
                 } else {
-                    Log.e(TAG, "网络失败且无缓存数据")
+                    Log.e(TAG, "网络失败且无可用缓存数据")
                     return networkResult
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "获取日记列表异常", e)
             // 异常情况下尝试返回缓存数据
-            if (localRepository.hasCachedData()) {
-                Log.d(TAG, "异常情况下返回缓存数据")
+            if (localRepository.hasCachedData() && localRepository.hasDataForPage(pageIndex, pageSize)) {
+                Log.d(TAG, "异常情况下使用缓存数据")
                 val cachedData = localRepository.getDiariesPaged(pageIndex, pageSize)
                 val processedData = processImagesInDiaryData(cachedData)
                 return Result.success(processedData)
@@ -125,6 +119,7 @@ class DiaryRepositoryWithCache @Inject constructor(
             }
         }
     }
+
 
     /**
      * 删除日记 - 先删除网络数据，成功后删除缓存

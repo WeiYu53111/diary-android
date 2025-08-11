@@ -84,8 +84,9 @@ class DiaryLocalRepository @Inject constructor(
         val entities = records.map { it.toDiaryEntity() }
         diaryDao.insertDiaries(entities)
         
-        // 更新缓存元数据
-        updateCacheMetadata(records.size)
+        // 更新缓存元数据，记录总缓存数量
+        val totalCount = diaryDao.getDiaryCount()
+        updateCacheMetadata(totalCount)
     }
 
     /**
@@ -122,6 +123,17 @@ class DiaryLocalRepository @Inject constructor(
         val count = diaryDao.getDiaryCount()
         Log.d(TAG, "缓存中有 $count 条日记")
         return count > 0
+    }
+
+    /**
+     * 检查指定页面是否有足够的缓存数据
+     */
+    suspend fun hasDataForPage(pageIndex: Int, pageSize: Int): Boolean {
+        val totalCount = diaryDao.getDiaryCount()
+        val requiredMinCount = (pageIndex - 1) * pageSize + 1 // 至少需要的记录数
+        val hasData = totalCount >= requiredMinCount
+        Log.d(TAG, "检查第${pageIndex}页数据: 总数=$totalCount, 需要>=${requiredMinCount}, 结果=$hasData")
+        return hasData
     }
 
     /**

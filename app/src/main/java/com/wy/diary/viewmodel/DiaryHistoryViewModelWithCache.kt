@@ -56,18 +56,25 @@ class DiaryHistoryViewModelWithCache @Inject constructor(
 
     /**
      * 设置缓存数据监听
-     * 当本地缓存数据发生变化时，自动更新UI
+     * 当本地缓存数据发生变化时，自动更新UI（仅在初始加载时）
      */
     private fun setupCacheListener() {
+        // 暂时禁用自动缓存监听，避免干扰分页逻辑
+        // TODO: 后续可以优化为更智能的缓存监听策略
+        /*
         cacheRepository?.getCachedDiariesFlow()
             ?.combine(_uiState) { cachedRecords, currentState ->
-                if (cachedRecords.isNotEmpty() && !currentState.isLoading) {
-                    Log.d(TAG, "缓存数据更新: ${cachedRecords.size} 条记录")
+                // 只在初始状态（没有数据且不在加载中）时使用缓存数据初始化UI
+                if (cachedRecords.isNotEmpty() && 
+                    currentState.diaryItems.isEmpty() && 
+                    !currentState.isLoading && 
+                    !currentState.isRefreshing) {
+                    Log.d(TAG, "缓存数据初始化UI: ${cachedRecords.size} 条记录")
                     
                     val diaryItems = cachedRecords.toDiaryItems()
                     currentState.copy(
                         diaryItems = diaryItems,
-                        hasMoreData = diaryItems.size >= PAGE_SIZE
+                        hasMoreData = true // 初始状态假设有更多数据，由实际分页请求确定
                     )
                 } else {
                     currentState
@@ -77,6 +84,7 @@ class DiaryHistoryViewModelWithCache @Inject constructor(
                 _uiState.value = newState
             }
             ?.launchIn(viewModelScope)
+        */
     }
 
     /**
